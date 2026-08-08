@@ -1,2 +1,14 @@
 streamlit
 pillow
+torch
+torchvision
+opencv-python
+scikit-learn
+pandas
+matplotlib
+seaborn
+albumentations
+tqdm
+tensorboard
+jupyterlab
+scipy
