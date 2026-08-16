@@ -2,7 +2,8 @@ import streamlit as st
 from PIL import Image
 import torch
 import torch.nn as nn
-from torchvision import models, transforms
+import torch.nn.functional as F
+from torchvision import transforms
 
 st.set_page_config(
     page_title="Crop Disease Detector",
@@ -174,40 +175,66 @@ st.markdown("""
 
 #Class names
 CLASS_NAMES = [
-    "Cocoa_Black_Pod_Rot",
+    "Maize_Northern_Leaf_Blight",
+    "Tomato_Late_Blight",
+    "Tomato_Healthy",
+    "Maize_Healthy",
     "Cocoa_Healthy",
     "Cocoa_Pod_Borer",
+    "Cocoa_Black_Pod_Rot",
+    "Tomato_Leaf_Mold",
     "Maize_Common_Rust",
-    "Maize_Healthy",
-    "Maize_Northern_Leaf_Blight",
-    "Tomato_Early_Blight",
-    "Tomato_Healthy",
-    "Tomato_Late_Blight",
-    "Tomato_Leaf_Mold"
+    "Tomato_Early_Blight"
 ]
 
 #Loading model
+class GreenPulseCustomCNN(nn.Module):
+    def __init__(self, num_classes=10):
+        super(GreenPulseCustomCNN, self).__init__()
+
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(32)
+
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(64)
+
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
+
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.dropout = nn.Dropout(0.3)
+
+        self.fc1 = nn.Linear(128 * 28 * 28, 256)
+        self.fc2 = nn.Linear(256, num_classes)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
+
+        x = torch.flatten(x, 1)
+
+        x = self.dropout(F.relu(self.fc1(x)))
+        x = self.fc2(x)
+
+        return x
+
+
 @st.cache_resource
 def load_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = models.mobilenet_v3_large(weights=None)
-
-    model.classifier[3] = nn.Linear(
-        model.classifier[3].in_features,
-        len(CLASS_NAMES)
-    )
+    model = GreenPulseCustomCNN(
+        num_classes=len(CLASS_NAMES)
+    ).to(device)
 
     model.load_state_dict(
         torch.load(
-            "models/crop_disease_model.pth",
+            "models/custom_greenpulse_model.pth",
             map_location=device
         )
     )
-
-    model = model.to(device)
     model.eval()
-
     return model, device
 
 #Image Preprocessing
