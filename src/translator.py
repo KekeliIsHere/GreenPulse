@@ -1,7 +1,5 @@
-# src/translator.py
-
 LOCAL_DIAGNOSTIC_MAP = {
-    # ==================== COCOA ====================
+    #  COCOA 
     "Cocoa_Black_Pod_Rot": {
         "en": {
             "disease": "Black Pod Rot (Phytophthora)",
@@ -57,7 +55,7 @@ LOCAL_DIAGNOSTIC_MAP = {
         }
     },
 
-    # ==================== MAIZE ====================
+    # MAIZE
     "Maize_Common_Rust": {
         "en": {
             "disease": "Maize Common Rust (Puccinia sorghi)",
@@ -113,7 +111,7 @@ LOCAL_DIAGNOSTIC_MAP = {
         }
     },
 
-    # ==================== TOMATO ====================
+    # TOMATO 
     "Tomato_Early_Blight": {
         "en": {
             "disease": "Tomato Early Blight (Alternaria solani)",

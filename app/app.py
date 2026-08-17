@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.models import mobilenet_v3_large
+from src.translator import translate_diagnosis
 
 st.set_page_config(
     page_title="Crop Disease Detector",
@@ -331,7 +332,7 @@ with col1:
 with col2:
     language = st.selectbox(
         "🌍 Language",
-        ["English", "Twi", "Ga", "Ewe"])
+        ["English", "Twi (Akan)", "Ga", "Ewe"])
 
 st.divider()
 
@@ -416,8 +417,8 @@ with right_column:
         pretrained_disease = st.session_state["pretrained_disease"]
         pretrained_confidence = st.session_state["pretrained_confidence"]
 
-        custom_display = custom_disease.replace("_", " ")
-        pretrained_display = pretrained_disease.replace("_", " ")
+        custom_translation = translate_diagnosis(custom_disease,language)
+        pretrained_translation = translate_diagnosis(pretrained_disease,language)
 
         #Custom model
         st.markdown(
@@ -427,10 +428,10 @@ with right_column:
         CUSTOM GREENPULSE CNN
     </div>
     <div class="prediction-name">
-        🌱 {custom_display}
+        🌱 {custom_translation["disease"]}
     </div>
     <div class="confidence-label">
-        CONFIDENCE
+        {custom_translation["advice"]}
     </div>
     <div class="confidence-value">
         {custom_confidence * 100:.1f}%
@@ -449,10 +450,10 @@ with right_column:
         PRETRAINED MOBILENETV3-LARGE
     </div>
     <div class="prediction-name">
-        🌿 {pretrained_display}
+        🌿 {pretrained_translation["disease"]}
     </div>
     <div class="confidence-label">
-        CONFIDENCE
+        {pretrained_translation["advice"]}
     </div>
     <div class="confidence-value">
         {pretrained_confidence * 100:.1f}%
