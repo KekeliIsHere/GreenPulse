@@ -5,6 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
 from torchvision.models import mobilenet_v3_large
+
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 from src.translator import translate_diagnosis
 
 st.set_page_config(
