@@ -4,16 +4,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import transforms
+from torchvision.models import mobilenet_v3_large
 
 st.set_page_config(
     page_title="Crop Disease Detector",
     page_icon="🌿",
-    layout="wide"
-)
+    layout="wide")
 
 st.markdown("""
 <style>
-    /* Import a cute, rounded Google Font */
     @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap');
 
     /* Apply the font to the whole app */
@@ -21,7 +20,7 @@ st.markdown("""
         font-family: 'Nunito', sans-serif !important;
     }
 
-    /* Hide the Streamlit top menu and footer to make it look like a standalone app */
+    /* Hiding the Streamlit top menu and footer to make it look like a standalone app */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
@@ -38,7 +37,6 @@ st.markdown("""
         padding-top: 0rem;
     }
 
-    /* Bubbly Header */
     .hero-title {
         font-size: 3.5rem;
         font-weight: 800;
@@ -237,6 +235,33 @@ def load_model():
     model.eval()
     return model, device
 
+@st.cache_resource
+def load_pretrained_model():
+
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
+
+    model = mobilenet_v3_large(
+        weights=None
+    )
+
+    model.classifier[3] = nn.Linear(
+        model.classifier[3].in_features,
+        len(CLASS_NAMES)
+    )
+
+    model.load_state_dict(
+        torch.load(
+            "models/crop_disease_model.pth",
+            map_location=device
+        )
+    )
+
+    model = model.to(device)
+    model.eval()
+    return model, device
+
 #Image Preprocessing
 inference_transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -267,86 +292,89 @@ def predict_disease(image, model, device):
     predicted_index = predicted_class.item()
     disease = CLASS_NAMES[predicted_index]
     confidence = confidence.item()
-
     return disease, confidence
 
+def predict_pretrained_disease(image, model, device):
+    image = image.convert("RGB")
+
+    image_tensor = inference_transform(image)
+    image_tensor = image_tensor.unsqueeze(0)
+    image_tensor = image_tensor.to(device)
+
+    with torch.inference_mode():
+        outputs = model(image_tensor)
+        probabilities = torch.softmax(
+            outputs,
+            dim=1)
+
+        confidence, predicted_class = torch.max(
+            probabilities,
+            dim=1)
+
+    predicted_index = predicted_class.item()
+    disease = CLASS_NAMES[predicted_index]
+    confidence = confidence.item()
+    return disease, confidence
 
 col1, col2 = st.columns([5, 1])
-
 with col1:
     st.markdown(
         '<div class="hero-title">GreenPulse</div>',
-        unsafe_allow_html=True
-    )
+        unsafe_allow_html=True)
 
     st.markdown(
         '<div class="hero-subtitle">'
         'AI-powered crop disease detection for healthier crops.'
         '</div>',
-        unsafe_allow_html=True
-    )
+        unsafe_allow_html=True)
 
 with col2:
     language = st.selectbox(
         "🌍 Language",
-        ["English", "Twi", "Ga", "Ewe"]
-    )
+        ["English", "Twi", "Ga", "Ewe"])
 
 st.divider()
 
 left_column, right_column = st.columns(
     [1, 1],
-    gap="large"
-)
+    gap="large")
 
 with left_column:
-
     st.markdown(
         '<div class="section-title">'
         '📷 Upload or Capture Image'
         '</div>',
-        unsafe_allow_html=True
-    )
+        unsafe_allow_html=True)
 
     image_source = st.radio(
         "Choose Image Source",
         ["Upload Image", "Take Photo"],
-        horizontal=True
-    )
+        horizontal=True)
 
     image = None
-
     if image_source == "Upload Image":
-
         uploaded_file = st.file_uploader(
             "Upload a crop leaf image",
-            type=["jpg", "jpeg", "png"]
-        )
+            type=["jpg", "jpeg", "png"])
 
         if uploaded_file:
             image = Image.open(uploaded_file)
 
     else:
-
         camera_photo = st.camera_input(
-            "Take a picture of the leaf"
-        )
+            "Take a picture of the leaf")
 
         if camera_photo:
             image = Image.open(camera_photo)
 
     if image:
-
         st.image(
             image,
             caption="Leaf Preview",
-            use_container_width=True
-        )
-
+            use_container_width=True)
         st.info(
             "Tip: Use a clear photo with good lighting "
-            "for the best prediction."
-        )
+            "for the best prediction.")
 
         if st.button(
             "🔍 Detect Disease",
@@ -354,66 +382,83 @@ with left_column:
             use_container_width=True):
 
             with st.spinner("Analyzing the leaf..."):
+                custom_model, device = load_model()
 
-                model, device = load_model()
-
-                disease, confidence = predict_disease(
+                custom_disease, custom_confidence = predict_disease(
                     image,
-                    model,
-                    device
-                )
+                    custom_model,
+                    device)
+                
+                pretrained_model, _ = load_pretrained_model()
+
+                pretrained_disease, pretrained_confidence = predict_pretrained_disease(
+                    image,
+                    pretrained_model,
+                    device)
 
                 st.session_state["prediction_made"] = True
-                st.session_state["disease"] = disease
-                st.session_state["confidence"] = confidence
-
-            st.rerun()
-
+                st.session_state["custom_disease"] = custom_disease
+                st.session_state["custom_confidence"] = custom_confidence
+                st.session_state["pretrained_disease"] = pretrained_disease
+                st.session_state["pretrained_confidence"] = pretrained_confidence
+                st.rerun()
 
 with right_column:
-
     st.markdown(
-        '<div class="section-title">'
-        '🔬 Prediction Result'
-        '</div>',
-        unsafe_allow_html=True
-    )
+        '<div class="section-title">🔬 Prediction Result</div>',
+        unsafe_allow_html=True)
 
     if "prediction_made" in st.session_state:
 
-        disease = st.session_state["disease"]
-        confidence = st.session_state["confidence"]
+        custom_disease = st.session_state["custom_disease"]
+        custom_confidence = st.session_state["custom_confidence"]
 
-        display_name = disease.replace("_", " ")
+        pretrained_disease = st.session_state["pretrained_disease"]
+        pretrained_confidence = st.session_state["pretrained_confidence"]
 
-        confidence_percent = confidence * 100
+        custom_display = custom_disease.replace("_", " ")
+        pretrained_display = pretrained_disease.replace("_", " ")
 
+        #Custom model
         st.markdown(
-            f"""<div class="prediction-card">
-                    <div class="prediction-label">DETECTED CONDITION</div>
-                    <div class="prediction-name">🌱 {display_name}</div>
-                    <div class="confidence-label">CONFIDENCE</div>
-                    <div class="confidence-value">{confidence_percent:.1f}%</div>
-                </div>""",unsafe_allow_html=True)
+            f"""
+<div class="prediction-card">
+    <div class="prediction-label">
+        CUSTOM GREENPULSE CNN
+    </div>
+    <div class="prediction-name">
+        🌱 {custom_display}
+    </div>
+    <div class="confidence-label">
+        CONFIDENCE
+    </div>
+    <div class="confidence-value">
+        {custom_confidence * 100:.1f}%
+    </div>
+</div>
+""",
+            unsafe_allow_html=True)
 
-        st.progress(confidence)
+        st.progress(custom_confidence)
 
+        # Pretrained model
         st.markdown(
-            """<div class="model-info">
-                <b>GreenPulse AI</b><br>
-                Prediction generated using the trained crop disease classification model.
-                </div>""",unsafe_allow_html=True)
+            f"""
+<div class="prediction-card">
+    <div class="prediction-label">
+        PRETRAINED MOBILENETV3-LARGE
+    </div>
+    <div class="prediction-name">
+        🌿 {pretrained_display}
+    </div>
+    <div class="confidence-label">
+        CONFIDENCE
+    </div>
+    <div class="confidence-value">
+        {pretrained_confidence * 100:.1f}%
+    </div>
+</div>
+""",
+            unsafe_allow_html=True)
 
-    else:
-        st.markdown(
-            """<div class="ready-card">
-            <div class="ready-title">
-            🌱 Ready to analyze
-            </div>
-            <div class="ready-text">
-            Upload or capture a crop leaf image
-            on the left, then click
-            <b>Detect Disease</b> to let
-            GreenPulse analyze it.
-            </div>
-            </div>""",unsafe_allow_html=True)
+        st.progress(pretrained_confidence)
