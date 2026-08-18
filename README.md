@@ -32,6 +32,7 @@ If you already have the project downloaded, you can skip this step and open your
 Create a virtual environment for the project by typing:  python -m venv .venv
 
 ### 3. Activate the Virtual Environment
+For git bash you activate the environment by typing : source .venv/Scripts/activate
 
 For Windows Command Prompt you activate the environment by typing:
 ```cmd
@@ -84,7 +85,7 @@ If the application cannot find the trained model, check that the following file 
 Also make sure that you are running the Streamlit command from the main GreenPulse project folder.
 
 ### PowerShell Activation Error
-If PowerShell reports that script execution is disabled, use Windows Command Prompt insteadby typing: .venv\Scripts\activate
+If PowerShell reports that script execution is disabled, use Git bash instead by typing: source .venv/Scripts/activate
 Then run by typing streamlit run app/app.py
 
 ### Missing Dependencies
